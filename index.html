@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TempMail Pro — Free Disposable Email</title>
+    <meta name="description" content="Generate free temporary disposable email addresses instantly. No signup required. Receive emails in real-time.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background effects -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                </svg>
+            </div>
+            <span class="brand-name">TempMail<span class="brand-accent">Pro</span></span>
+        </div>
+        <div class="nav-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-text" id="statusText">Connecting...</span>
+        </div>
+    </nav>
+
+    <!-- Hero / Create Section -->
+    <main class="container">
+        <!-- Step 1: Create Identity -->
+        <section class="card card-create" id="createSection">
+            <div class="card-header">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                </div>
+                <h1 class="card-title">Create New Identity</h1>
+                <p class="card-subtitle">Generate a free temporary email address instantly</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="usernameInput">USERNAME</label>
+                <div class="input-wrapper">
+                    <input type="text" id="usernameInput" class="form-input" placeholder="Enter username or generate random" autocomplete="off">
+                    <button class="btn-icon btn-random" id="randomBtn" title="Generate random username">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="1 4 1 10 7 10"/>
+                            <polyline points="23 20 23 14 17 14"/>
+                            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="label-row">
+                    <label class="form-label" for="domainSelect">DOMAIN</label>
+                    <span class="domain-count" id="domainCount">Loading...</span>
+                </div>
+                <div class="select-wrapper">
+                    <select id="domainSelect" class="form-select">
+                        <option value="">Loading domains...</option>
+                    </select>
+                    <div class="select-arrow">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="email-preview" id="emailPreview">
+                <span class="preview-label">Your email will be:</span>
+                <span class="preview-email" id="previewEmail">username@domain.com</span>
+            </div>
+
+            <button class="btn btn-primary btn-create" id="createBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13"/>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+                </svg>
+                <span>Create Email</span>
+            </button>
+
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <span>100% Free</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <span>Instant</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🛡️</div>
+                    <span>No Signup</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">♻️</div>
+                    <span>Auto-Delete</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: Active Session -->
+        <section class="card card-session hidden" id="sessionSection">
+            <div class="card-header">
+                <div class="header-left">
+                    <h2 class="card-title">Active Session</h2>
+                    <span class="provider-badge" id="providerBadge">Provider</span>
+                </div>
+                <div class="session-timer" id="sessionTimer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span id="timerText">00:00</span>
+                </div>
+            </div>
+
+            <div class="email-display">
+                <div class="email-address-box">
+                    <span class="email-address" id="activeEmail">loading@mail.tm</span>
+                    <button class="btn-icon btn-copy" id="copyBtn" title="Copy email address">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="copy-toast hidden" id="copyToast">✓ Copied!</div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" id="refreshBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="1 4 1 10 7 10"/>
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                    </svg>
+                    <span>Refresh Inbox</span>
+                </button>
+                <button class="btn btn-secondary" id="changeAliasBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    <span>New Email</span>
+                </button>
+                <button class="btn btn-danger" id="deleteBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    <span>Delete & Exit</span>
+                </button>
+            </div>
+
+            <!-- Inbox -->
+            <div class="inbox-container">
+                <div class="inbox-header">
+                    <h3 class="inbox-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+                            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                        </svg>
+                        Inbox
+                    </h3>
+                    <span class="message-count" id="messageCount">0 messages</span>
+                </div>
+
+                <!-- Loading state -->
+                <div class="inbox-loading hidden" id="inboxLoading">
+                    <div class="spinner"></div>
+                    <span>Checking for new emails...</span>
+                </div>
+
+                <!-- Empty state -->
+                <div class="inbox-empty" id="inboxEmpty">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="8" y="16" width="48" height="36" rx="4"/>
+                            <path d="M8 24l24 16 24-16" stroke-width="1.5"/>
+                            <circle cx="52" cy="16" r="8" fill="#ff4444" stroke="none"/>
+                            <text x="52" y="20" text-anchor="middle" fill="white" font-size="10" font-weight="bold">0</text>
+                        </svg>
+                    </div>
+                    <h4>Inbox Empty</h4>
+                    <p>Waiting for incoming emails...</p>
+                    <div class="auto-refresh-notice">
+                        <div class="pulse-dot"></div>
+                        Auto-refreshing every 5 seconds
+                    </div>
+                </div>
+
+                <!-- Message list -->
+                <div class="message-list hidden" id="messageList"></div>
+            </div>
+
+            <!-- Email viewer -->
+            <div class="email-viewer hidden" id="emailViewer">
+                <button class="btn btn-back" id="backBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="19" y1="12" x2="5" y2="12"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    <span>Back to Inbox</span>
+                </button>
+                <div class="viewer-header">
+                    <h3 class="viewer-subject" id="viewerSubject">Email Subject</h3>
+                    <div class="viewer-meta">
+                        <div class="viewer-from">
+                            <span class="meta-label">From:</span>
+                            <span class="meta-value" id="viewerFrom">sender@example.com</span>
+                        </div>
+                        <div class="viewer-date">
+                            <span class="meta-label">Date:</span>
+                            <span class="meta-value" id="viewerDate">2024-01-01</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="viewer-body" id="viewerBody">
+                    <!-- Email content rendered here -->
+                </div>
+                <div class="viewer-attachments hidden" id="viewerAttachments">
+                    <h4>Attachments</h4>
+                    <div class="attachment-list" id="attachmentList"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Powered by <a href="https://mail.tm" target="_blank" rel="noopener">Mail.tm</a> · <a href="https://www.1secmail.com" target="_blank" rel="noopener">1secMail</a> · <a href="https://dropmail.me" target="_blank" rel="noopener">DropMail</a></p>
+            <p class="footer-note">3 providers combined — All free & no signup required</p>
+        </footer>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
