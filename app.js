@@ -372,6 +372,7 @@ async function createEmail() {
             providerBadge.textContent = PROVIDERS[provider].name;
             providerBadge.className = `provider-badge badge-${provider}`;
         }
+        saveSession();
         showSession();
     } catch (e) {
         alert('Error creating email: ' + e.message);
@@ -395,8 +396,65 @@ async function readMessage(msg) {
     throw new Error('Unknown provider');
 }
 
-async function deleteSession() {
-    if (state.provider === 'mailtm') await mailtmDelete();
+// ===== SESSION PERSISTENCE =====
+function saveSession() {
+    const data = {
+        provider: state.provider,
+        email: state.email,
+        password: state.password,
+        token: state.token,
+        accountId: state.accountId,
+        login: state.login,
+        domain: state.domain,
+        dropSessionId: state.dropSessionId,
+        savedAt: Date.now(),
+    };
+    localStorage.setItem('tempmail_session', JSON.stringify(data));
+    console.log('💾 Session saved to localStorage');
+}
+
+function loadSession() {
+    try {
+        const raw = localStorage.getItem('tempmail_session');
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch { return null; }
+}
+
+function clearSavedSession() {
+    localStorage.removeItem('tempmail_session');
+}
+
+async function restoreSession(saved) {
+    state.provider = saved.provider;
+    state.email = saved.email;
+    state.password = saved.password;
+    state.token = saved.token;
+    state.accountId = saved.accountId;
+    state.login = saved.login;
+    state.domain = saved.domain;
+    state.dropSessionId = saved.dropSessionId;
+
+    // Re-authenticate Mail.tm if token might be expired
+    if (saved.provider === 'mailtm' && saved.email && saved.password) {
+        try {
+            const tokenData = await mailtmAuth(saved.email, saved.password);
+            state.token = tokenData.token;
+            saveSession(); // update with fresh token
+        } catch (e) {
+            console.warn('Session expired, need new email');
+            clearSavedSession();
+            return false;
+        }
+    }
+
+    if (providerBadge && state.provider) {
+        providerBadge.textContent = PROVIDERS[state.provider]?.name || state.provider;
+        providerBadge.className = `provider-badge badge-${state.provider}`;
+    }
+    setStatus(true, 'Session Restored');
+    showSession();
+    return true;
 }
 
 // ===== UI =====
@@ -520,8 +578,9 @@ async function openMessage(idx) {
     }
 }
 
-function resetState() {
+function resetState(keepEmail) {
     clearIntervals();
+    if (!keepEmail) clearSavedSession();
     state.provider = null;
     state.token = null;
     state.accountId = null;
@@ -554,9 +613,8 @@ copyBtn.addEventListener('click', () => {
 refreshBtn.addEventListener('click', refreshInbox);
 
 changeAliasBtn.addEventListener('click', async () => {
-    if (confirm('Create a new email? Current session will end.')) {
-        await deleteSession();
-        resetState();
+    if (confirm('Create a new email? Current email stays active but you\'ll switch to a new one.')) {
+        resetState(false);
         showCreate();
         usernameInput.value = generateUsername();
         updatePreview();
@@ -564,12 +622,9 @@ changeAliasBtn.addEventListener('click', async () => {
 });
 
 deleteBtn.addEventListener('click', async () => {
-    if (confirm('Delete this email and end session?')) {
-        deleteBtn.querySelector('span').textContent = 'Deleting...';
-        await deleteSession();
-        resetState();
+    if (confirm('Exit this session? Your email will stay active — you can come back later.')) {
+        resetState(true); // keep saved session
         showCreate();
-        deleteBtn.querySelector('span').textContent = 'Delete & Exit';
     }
 });
 
@@ -580,7 +635,18 @@ $('#backBtn').addEventListener('click', () => {
 
 // ===== INIT =====
 (async function init() {
-    usernameInput.value = generateUsername();
-    setStatus(null, 'Loading domains...');
+    setStatus(null, 'Loading...');
     await fetchAllDomains();
+
+    // Try to restore previous session
+    const saved = loadSession();
+    if (saved && saved.email) {
+        setStatus(null, 'Restoring session...');
+        const ok = await restoreSession(saved);
+        if (ok) return; // session restored, we're in inbox view
+    }
+
+    // No saved session, show create form
+    usernameInput.value = generateUsername();
+    updatePreview();
 })();
