@@ -1,19 +1,11 @@
 // ===== TempMail Pro — Multi-Provider Temp Email Client =====
-// Providers: Mail.tm, 1secmail, DropMail.me
+// Providers: Mail.tm + DropMail.me (verified working)
 
-// ===== PROVIDER CONFIGS =====
 const PROVIDERS = {
     mailtm: {
         name: 'Mail.tm',
         api: 'https://api.mail.tm',
-        type: 'account', // needs account creation + JWT
-    },
-    onesecmail: {
-        name: '1secMail',
-        api: 'https://www.1secmail.com/api/v1/',
-        type: 'simple', // just poll by login+domain
-        domains: ['1secmail.com','1secmail.org','1secmail.net','imdutex.com','fypm.email',
-                   'esiix.com','wwjmp.com','emvil.com','vddaz.com','trevado.com'],
+        type: 'account',
     },
     dropmail: {
         name: 'DropMail',
@@ -23,20 +15,19 @@ const PROVIDERS = {
 };
 
 const state = {
-    provider: null,   // 'mailtm' | 'onesecmail' | 'dropmail'
-    allDomains: [],   // [{domain, provider}]
+    provider: null,
+    allDomains: [],
     // Mail.tm
     token: null,
     accountId: null,
-    // 1secmail
-    login: null,
-    domain: null,
     // DropMail
-    dropSession: null,
     dropSessionId: null,
+    dropSession: null,
     // Common
     email: null,
     password: null,
+    login: null,
+    domain: null,
     messages: [],
     refreshInterval: null,
     timerInterval: null,
@@ -130,16 +121,15 @@ async function fetchAllDomains() {
     state.allDomains = [];
     const results = await Promise.allSettled([
         fetchMailtmDomains(),
-        fetch1secmailDomains(),
         fetchDropmailDomains(),
     ]);
-    // Sort by provider then alpha
+
     state.allDomains.sort((a, b) => a.domain.localeCompare(b.domain));
 
     domainSelect.innerHTML = '';
     if (state.allDomains.length === 0) {
-        domainSelect.innerHTML = '<option value="">No domains available</option>';
-        setStatus(false, 'No providers');
+        domainSelect.innerHTML = '<option value="">No domains available — check console</option>';
+        setStatus(false, 'No providers available');
         return;
     }
 
@@ -151,9 +141,8 @@ async function fetchAllDomains() {
     });
 
     const providerLabels = {
-        mailtm: '── Mail.tm ──',
-        onesecmail: '── 1secMail ──',
-        dropmail: '── DropMail ──',
+        mailtm: `── Mail.tm (${grouped.mailtm?.length || 0}) ──`,
+        dropmail: `── DropMail (${grouped.dropmail?.length || 0}) ──`,
     };
 
     for (const [prov, domains] of Object.entries(grouped)) {
@@ -174,15 +163,17 @@ async function fetchAllDomains() {
     updatePreview();
 }
 
-// ===== MAIL.TM PROVIDER =====
+// ===== MAIL.TM =====
 async function fetchMailtmDomains() {
     try {
         const res = await fetch(`${PROVIDERS.mailtm.api}/domains`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const domains = data['hydra:member'] || data;
         domains.forEach(d => state.allDomains.push({ domain: d.domain, provider: 'mailtm' }));
+        console.log(`✅ Mail.tm: ${domains.length} domains loaded`);
     } catch (e) {
-        console.warn('Mail.tm domains failed:', e);
+        console.warn('❌ Mail.tm failed:', e.message);
     }
 }
 
@@ -205,7 +196,7 @@ async function mailtmAuth(address, password) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address, password }),
     });
-    if (!res.ok) throw new Error('Auth failed');
+    if (!res.ok) throw new Error('Authentication failed');
     return res.json();
 }
 
@@ -213,7 +204,7 @@ async function mailtmGetMessages() {
     const res = await fetch(`${PROVIDERS.mailtm.api}/messages`, {
         headers: { Authorization: `Bearer ${state.token}` },
     });
-    if (!res.ok) throw new Error('Fetch failed');
+    if (!res.ok) throw new Error('Fetch messages failed');
     const data = await res.json();
     return (data['hydra:member'] || data).map(m => ({
         id: m.id,
@@ -230,7 +221,7 @@ async function mailtmReadMessage(id) {
     const res = await fetch(`${PROVIDERS.mailtm.api}/messages/${id}`, {
         headers: { Authorization: `Bearer ${state.token}` },
     });
-    if (!res.ok) throw new Error('Read failed');
+    if (!res.ok) throw new Error('Read message failed');
     const m = await res.json();
     return {
         subject: m.subject || '(No Subject)',
@@ -252,60 +243,7 @@ async function mailtmDelete() {
     } catch (e) { console.warn('Delete fail:', e); }
 }
 
-// ===== 1SECMAIL PROVIDER =====
-async function fetch1secmailDomains() {
-    try {
-        const res = await fetch('https://www.1secmail.com/api/v1/?action=getDomainList');
-        const data = await res.json();
-        data.forEach(d => state.allDomains.push({ domain: d, provider: 'onesecmail' }));
-    } catch (e) {
-        // Fallback to known domains
-        console.warn('1secmail domains failed, using fallback:', e);
-        PROVIDERS.onesecmail.domains.forEach(d =>
-            state.allDomains.push({ domain: d, provider: 'onesecmail' })
-        );
-    }
-}
-
-async function onesecmailGetMessages() {
-    const res = await fetch(
-        `https://www.1secmail.com/api/v1/?action=getMessages&login=${state.login}&domain=${state.domain}`
-    );
-    if (!res.ok) throw new Error('Fetch failed');
-    const data = await res.json();
-    return data.map(m => ({
-        id: m.id,
-        from: m.from || 'Unknown',
-        fromName: '',
-        subject: m.subject || '(No Subject)',
-        date: m.date,
-        seen: false,
-        _provider: 'onesecmail',
-    }));
-}
-
-async function onesecmailReadMessage(id) {
-    const res = await fetch(
-        `https://www.1secmail.com/api/v1/?action=readMessage&login=${state.login}&domain=${state.domain}&id=${id}`
-    );
-    if (!res.ok) throw new Error('Read failed');
-    const m = await res.json();
-    return {
-        subject: m.subject || '(No Subject)',
-        from: m.from || 'Unknown',
-        date: m.date,
-        html: m.htmlBody || null,
-        text: m.textBody || '',
-        attachments: (m.attachments || []).map(a => ({
-            filename: a.filename,
-            size: a.size,
-            contentType: a.contentType,
-            downloadUrl: `https://www.1secmail.com/api/v1/?action=download&login=${state.login}&domain=${state.domain}&id=${id}&file=${a.filename}`,
-        })),
-    };
-}
-
-// ===== DROPMAIL PROVIDER =====
+// ===== DROPMAIL =====
 async function fetchDropmailDomains() {
     try {
         const query = `{ domains { name } }`;
@@ -314,14 +252,16 @@ async function fetchDropmailDomains() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query }),
         });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (data.data?.domains) {
             data.data.domains.forEach(d =>
                 state.allDomains.push({ domain: d.name, provider: 'dropmail' })
             );
+            console.log(`✅ DropMail: ${data.data.domains.length} domains loaded`);
         }
     } catch (e) {
-        console.warn('DropMail domains failed:', e);
+        console.warn('❌ DropMail failed:', e.message);
     }
 }
 
@@ -332,18 +272,21 @@ async function dropmailCreateSession(domain) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
     });
+    if (!res.ok) throw new Error('DropMail session creation failed');
     const data = await res.json();
+    if (data.errors) throw new Error(data.errors[0]?.message || 'GraphQL error');
     return data.data?.introduceSession;
 }
 
 async function dropmailGetMessages() {
     if (!state.dropSessionId) return [];
-    const query = `{ session(id: "${state.dropSessionId}") { mails { rawId fromAddr toAddr headerSubject text downloadUrl receivedAt } } }`;
+    const query = `{ session(id: "${state.dropSessionId}") { mails { rawId fromAddr headerSubject text receivedAt } } }`;
     const res = await fetch(PROVIDERS.dropmail.api, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
     });
+    if (!res.ok) throw new Error('Fetch messages failed');
     const data = await res.json();
     const mails = data.data?.session?.mails || [];
     return mails.map(m => ({
@@ -355,19 +298,25 @@ async function dropmailGetMessages() {
         seen: false,
         _provider: 'dropmail',
         _text: m.text,
-        _html: m.downloadUrl ? null : null,
-        _downloadUrl: m.downloadUrl,
     }));
 }
 
 async function dropmailReadMessage(msg) {
-    // DropMail returns full content in list, but we can fetch HTML via downloadUrl
+    // DropMail returns full content inline
+    // Try to fetch HTML version via source
     let html = null;
-    if (msg._downloadUrl) {
+    if (state.dropSessionId && msg.id) {
         try {
-            const res = await fetch(msg._downloadUrl);
-            html = await res.text();
-        } catch (e) { /* ignore */ }
+            const query = `{ session(id: "${state.dropSessionId}") { mails(rawId: "${msg.id}") { rawId headerSubject fromAddr text html receivedAt } } }`;
+            const res = await fetch(PROVIDERS.dropmail.api, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query }),
+            });
+            const data = await res.json();
+            const mail = data.data?.session?.mails?.[0];
+            if (mail?.html) html = mail.html;
+        } catch (e) { /* fallback to text */ }
     }
     return {
         subject: msg.subject || '(No Subject)',
@@ -381,8 +330,11 @@ async function dropmailReadMessage(msg) {
 
 // ===== UNIFIED CREATE =====
 async function createEmail() {
-    const username = usernameInput.value.trim() || generateUsername();
-    usernameInput.value = username;
+    let username = usernameInput.value.trim();
+    if (!username) {
+        username = generateUsername();
+        usernameInput.value = username;
+    }
     const domain = domainSelect.value;
     if (!domain) return alert('No domain selected');
 
@@ -405,15 +357,11 @@ async function createEmail() {
             state.accountId = account.id;
             const tokenData = await mailtmAuth(state.email, password);
             state.token = tokenData.token;
-        } else if (provider === 'onesecmail') {
-            // 1secmail doesn't need account creation — just poll
-            // Nothing to do here
         } else if (provider === 'dropmail') {
             const session = await dropmailCreateSession(domain);
             if (!session) throw new Error('Failed to create DropMail session');
             state.dropSessionId = session.id;
             state.dropSession = session;
-            // Use the address provided by DropMail
             if (session.addresses?.length > 0) {
                 state.email = session.addresses[0].address;
             }
@@ -426,7 +374,7 @@ async function createEmail() {
         }
         showSession();
     } catch (e) {
-        alert('Error: ' + e.message);
+        alert('Error creating email: ' + e.message);
         setStatus(false, 'Creation failed');
     } finally {
         createBtn.disabled = false;
@@ -434,26 +382,21 @@ async function createEmail() {
     }
 }
 
-// ===== UNIFIED FETCH MESSAGES =====
+// ===== UNIFIED FETCH / READ / DELETE =====
 async function getMessages() {
     if (state.provider === 'mailtm') return mailtmGetMessages();
-    if (state.provider === 'onesecmail') return onesecmailGetMessages();
     if (state.provider === 'dropmail') return dropmailGetMessages();
     return [];
 }
 
-// ===== UNIFIED READ MESSAGE =====
 async function readMessage(msg) {
     if (msg._provider === 'mailtm') return mailtmReadMessage(msg.id);
-    if (msg._provider === 'onesecmail') return onesecmailReadMessage(msg.id);
     if (msg._provider === 'dropmail') return dropmailReadMessage(msg);
     throw new Error('Unknown provider');
 }
 
-// ===== UNIFIED DELETE =====
 async function deleteSession() {
     if (state.provider === 'mailtm') await mailtmDelete();
-    // 1secmail and dropmail don't have delete endpoints
 }
 
 // ===== UI =====
@@ -502,7 +445,7 @@ async function refreshInbox() {
         setStatus(true, 'Connected');
     } catch (e) {
         console.error('Refresh error:', e);
-        setStatus(false, 'Connection lost');
+        setStatus(false, 'Connection lost — retrying...');
     } finally {
         inboxLoading.classList.add('hidden');
     }
